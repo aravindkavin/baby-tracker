@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Baby Log">
+  <title>Baby Log</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f5f5f4;
+      --bg-tertiary: #eeece9;
+      --text: #1a1a1a;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9ca3af;
+      --border: rgba(0,0,0,0.12);
+      --border-md: rgba(0,0,0,0.2);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --green: #1D9E75;
+      --red: #E24B4A;
+
+      --poop: #8B5A2B;        --poop-soft: rgba(139,90,43,0.12);
+      --milk_start: #3B7DD8;  --milk_start-soft: rgba(59,125,216,0.12);
+      --milk_end: #0EA5A5;    --milk_end-soft: rgba(14,165,165,0.12);
+      --burp: #8B5CF6;        --burp-soft: rgba(139,92,246,0.12);
+      --urine: #D9A404;       --urine-soft: rgba(217,164,4,0.14);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1e;
+        --bg-secondary: #2c2c2e;
+        --bg-tertiary: #3a3a3c;
+        --text: #f2f2f7;
+        --text-secondary: #aeaeb2;
+        --text-tertiary: #636366;
+        --border: rgba(255,255,255,0.12);
+        --border-md: rgba(255,255,255,0.2);
+
+        --poop: #B57A4A;        --poop-soft: rgba(181,122,74,0.18);
+        --milk_start: #4F94EB;  --milk_start-soft: rgba(79,148,235,0.16);
+        --milk_end: #2DD4D4;    --milk_end-soft: rgba(45,212,212,0.18);
+        --burp: #A78BFA;        --burp-soft: rgba(167,139,250,0.18);
+        --urine: #E8BC3A;       --urine-soft: rgba(232,188,58,0.18);
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-secondary);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 2rem;
+    }
+
+    header {
+      background: var(--bg);
+      border-bottom: 0.5px solid var(--border);
+      padding: 1rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .app { max-width: 480px; margin: 0 auto; padding: 1rem; }
+
+    .tabs {
+      display: flex;
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 9px;
+      font-size: 14px;
+      font-weight: 500;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+
+    .tab.active {
+      background: var(--bg-secondary);
+      color: var(--text);
+    }
+
+    .card {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .field { margin-bottom: 1rem; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 9px 11px;
+      font-size: 15px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: var(--border-md);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .type-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .type-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 6px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+      line-height: 1.2;
+    }
+    .type-btn .type-emoji { font-size: 22px; }
+    .type-btn.active {
+      background: var(--tc-soft);
+      border-color: var(--tc);
+      color: var(--tc);
+      font-weight: 600;
+    }
+    .type-btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      width: 100%;
+      padding: 11px;
+      font-size: 15px;
+      font-weight: 500;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 1rem;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:active { opacity: 0.8; transform: scale(0.99); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 11px;
+      font-size: 15px;
+      font-weight: 500;
+      background: transparent;
+      color: var(--text);
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    .btn-secondary:active { opacity: 0.8; }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+      padding-left: 2px;
+    }
+
+    .glance-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+    .glance-grid .metric:last-child { grid-column: 1 / -1; }
+
+    .metric {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 0.85rem 1rem;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .metric-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .metric-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+
+    .filter-card {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 0.9rem 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .chip {
+      flex-shrink: 0;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+    .filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .filter-row:last-child { margin-bottom: 0; }
+    .filter-row .field { flex: 1; margin-bottom: 0; }
+
+    .filter-row select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 13px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    select option { background: var(--bg); color: var(--text); }
+
+    .export-btn {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      background: transparent;
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 1rem;
+      transition: background 0.15s;
+    }
+    .export-btn:hover { background: var(--bg-tertiary); }
+    .export-btn:active { transform: scale(0.98); }
+
+    .activity-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .activity-item {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .activity-left { flex: 1; min-width: 0; }
+
+    .activity-type {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .activity-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .activity-date {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 3px;
+    }
+
+    .activity-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .edit-btn, .del-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 18px;
+      padding: 4px;
+      line-height: 1;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+    }
+    .edit-btn:hover { color: var(--green); background: rgba(29,158,117,0.08); }
+    .del-btn:hover { color: var(--red); background: rgba(226,75,74,0.08); }
+
+    .empty {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .empty span { font-size: 36px; display: block; margin-bottom: 10px; }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--green);
+      color: #fff;
+      padding: 9px 22px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.25s;
+      pointer-events: none;
+      z-index: 99;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 50;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0 0 env(safe-area-inset-bottom, 0);
+    }
+    .modal-overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--bg);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      width: 100%;
+      max-width: 480px;
+      padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0));
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-title { font-size: 17px; font-weight: 600; }
+
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 20px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+    }
+    .modal-close:hover { background: var(--bg-tertiary); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>👶 Baby Log</h1>
+</header>
+
+<div class="app">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('add')">
+      <i class="ti ti-plus" aria-hidden="true"></i> Log Activity
+    </button>
+    <button class="tab" onclick="showTab('list')">
+      <i class="ti ti-list" aria-hidden="true"></i> History
+    </button>
+  </div>
+
+  <!-- ADD TAB -->
+  <div id="tab-add">
+    <p class="section-title">What happened?</p>
+    <div class="card">
+      <div class="field">
+        <div class="type-grid" id="type-grid"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="act-date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input type="time" id="act-time">
+        </div>
+      </div>
+      <div class="field">
+        <label>Note <span style="font-weight:400;color:var(--text-tertiary)">(optional)</span></label>
+        <input type="text" id="act-note" placeholder="e.g. 90ml, left side, fussy">
+      </div>
+      <button class="btn-primary" id="add-btn" onclick="saveActivity()">
+        <i class="ti ti-plus" aria-hidden="true"></i> Log Activity
+      </button>
+    </div>
+  </div>
+
+  <!-- LIST TAB -->
+  <div id="tab-list" style="display:none">
+    <p class="section-title">At a glance</p>
+    <div class="glance-grid" id="glance-grid"></div>
+
+    <div class="filter-card">
+      <div class="chip-row" id="preset-row"></div>
+      <div class="filter-row">
+        <div class="field">
+          <label>From</label>
+          <input type="date" id="filter-from" onchange="onCustomDateChange()">
+        </div>
+        <div class="field">
+          <label>To</label>
+          <input type="date" id="filter-to" onchange="onCustomDateChange()">
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="field">
+          <label>Activity</label>
+          <select id="filter-type" onchange="renderList()">
+            <option value="">All activities</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button class="export-btn" onclick="exportExcel()">
+      <i class="ti ti-download" aria-hidden="true"></i> Export as Excel
+    </button>
+
+    <p class="section-title" id="list-count">HISTORY</p>
+    <div class="activity-list" id="activity-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay hidden" id="edit-modal" onclick="handleModalOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Edit Activity</span>
+      <button class="modal-close" onclick="closeEditModal()" aria-label="Close">
+        <i class="ti ti-x" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="field">
+      <div class="type-grid" id="edit-type-grid"></div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="edit-date">
+      </div>
+      <div class="field">
+        <label>Time</label>
+        <input type="time" id="edit-time">
+      </div>
+    </div>
+    <div class="field">
+      <label>Note <span style="font-weight:400;color:var(--text-tertiary)">(optional)</span></label>
+      <input type="text" id="edit-note" placeholder="e.g. 90ml, left side, fussy">
+    </div>
+    <button class="btn-primary" id="edit-save-btn" onclick="updateActivity()">
+      <i class="ti ti-check" aria-hidden="true"></i> Save Changes
+    </button>
+    <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Firebase v9 compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<!-- SheetJS, for real .xlsx export -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDeARdPMD7ulABbBsFM2RtsS5Y8xSxlSvg",
+    authDomain: "my-expense-tracker-48147.firebaseapp.com",
+    projectId: "my-expense-tracker-48147",
+    storageBucket: "my-expense-tracker-48147.firebasestorage.app",
+    messagingSenderId: "382617851543",
+    appId: "1:382617851543:web:26558026ac4566cfc53bd2",
+    measurementId: "G-73F3Y252VX"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // In-memory cache kept in sync by the Firestore listener
+  let activities = [];
+
+  const TYPES = [
+    { id: 'poop',       label: 'Poop',       emoji: '💩' },
+    { id: 'milk_start', label: 'Milk Start', emoji: '🍼' },
+    { id: 'milk_end',   label: 'Milk End',   emoji: '🥛' },
+    { id: 'burp',       label: 'Burping',    emoji: '😮‍💨' },
+    { id: 'urine',      label: 'Urine',      emoji: '💧' }
+  ];
+
+  const PRESETS = [
+    { id: 'today', label: 'Today' },
+    { id: 'yesterday', label: 'Yesterday' },
+    { id: '7d', label: '7 Days' },
+    { id: 'month', label: 'This Month' },
+    { id: 'all', label: 'All' }
+  ];
+
+  let selectedType = null;
+  let editSelectedType = null;
+  let editingId = null;
+
+  function typeInfo(id) { return TYPES.find(t => t.id === id); }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function getNow() {
+    const d = new Date();
+    return { date: todayStr(), time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+  }
+
+  function dateStrFromOffset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function monthStartStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+  }
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function formatDate(d) {
+    const [y, m, day] = d.split('-');
+    return `${parseInt(day)} ${MONTHS[parseInt(m) - 1]} ${y}`;
+  }
+
+  function formatTime12(t) {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${pad(m)} ${ampm}`;
+  }
+
+  function timeAgo(date, time) {
+    const then = new Date(`${date}T${time}:00`);
+    let diffMs = Date.now() - then.getTime();
+    if (diffMs < 0) diffMs = 0;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    if (hours < 24) return remMins ? `${hours}h ${remMins}m ago` : `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return formatDate(date);
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function openPicker(input) {
+    input.focus();
+    if (typeof input.showPicker === 'function') {
+      try { input.showPicker(); return; } catch (e) {}
+    }
+  }
+
+  // --- Type grid (shared markup builder for add + edit) --------------------
+  function buildTypeGrid(containerId, selectHandlerName) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = TYPES.map(t => `
+      <button type="button" class="type-btn" data-type="${t.id}"
+              style="--tc:var(--${t.id});--tc-soft:var(--${t.id}-soft)"
+              onclick="${selectHandlerName}('${t.id}')">
+        <span class="type-emoji">${t.emoji}</span>
+        <span>${t.label}</span>
+      </button>
+    `).join('');
+  }
+
+  function setType(id) {
+    selectedType = id;
+    document.querySelectorAll('#type-grid .type-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.type === id);
+    });
+  }
+
+  function setEditType(id) {
+    editSelectedType = id;
+    document.querySelectorAll('#edit-type-grid .type-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.type === id);
+    });
+  }
+
+  function init() {
+    buildTypeGrid('type-grid', 'setType');
+    buildTypeGrid('edit-type-grid', 'setEditType');
+
+    const filterType = document.getElementById('filter-type');
+    TYPES.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = `${t.emoji} ${t.label}`;
+      filterType.appendChild(o);
+    });
+
+    buildPresetRow();
+
+    const { date, time } = getNow();
+    document.getElementById('act-date').value = date;
+    document.getElementById('act-time').value = time;
+
+    db.collection('baby_activities').onSnapshot(snapshot => {
+      activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderGlance();
+      if (document.getElementById('tab-list').style.display !== 'none') {
+        renderList();
+      }
+    }, err => {
+      console.error('Firestore error:', err);
+      showToast('Could not load activities', 'err');
+    });
+  }
+
+  async function saveActivity() {
+    const date = document.getElementById('act-date').value;
+    const time = document.getElementById('act-time').value;
+    const note = document.getElementById('act-note').value.trim();
+
+    if (!selectedType) return showToast('Please choose an activity', 'err');
+    if (!date || !time) return showToast('Please set date and time', 'err');
+
+    const btn = document.getElementById('add-btn');
+    btn.disabled = true;
+
+    try {
+      await db.collection('baby_activities').add({ type: selectedType, date, time, note });
+
+      document.getElementById('act-note').value = '';
+      const n = getNow();
+      document.getElementById('act-date').value = n.date;
+      document.getElementById('act-time').value = n.time;
+
+      showToast(`${typeInfo(selectedType).label} logged!`);
+    } catch (err) {
+      console.error('Save failed:', err);
+      showToast('Failed to save activity', 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function deleteActivity(id) {
+    if (!confirm('Delete this entry?')) return;
+    try {
+      await db.collection('baby_activities').doc(id).delete();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      showToast('Failed to delete entry', 'err');
+    }
+  }
+
+  // --- Glance (per-type "last logged") --------------------------------------
+  function renderGlance() {
+    const grid = document.getElementById('glance-grid');
+    grid.innerHTML = TYPES.map(t => {
+      const last = activities
+        .filter(a => a.type === t.id)
+        .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+      return `
+        <div class="metric">
+          <div class="metric-label">${t.emoji} ${t.label}</div>
+          <div class="metric-value" style="color:${last ? `var(--${t.id})` : 'var(--text)'}">${last ? timeAgo(last.date, last.time) : '—'}</div>
+          <div class="metric-sub">${last ? `${formatDate(last.date)}, ${formatTime12(last.time)}` : 'No entries yet'}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // --- Custom date filter ----------------------------------------------------
+  function buildPresetRow() {
+    const row = document.getElementById('preset-row');
+    row.innerHTML = PRESETS.map(p => `
+      <button type="button" class="chip" data-preset="${p.id}" onclick="setPreset('${p.id}')">${p.label}</button>
+    `).join('');
+    setPreset('all');
+  }
+
+  function setPreset(id) {
+    document.querySelectorAll('#preset-row .chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.preset === id);
+    });
+
+    const from = document.getElementById('filter-from');
+    const to = document.getElementById('filter-to');
+    const today = todayStr();
+
+    if (id === 'today') { from.value = today; to.value = today; }
+    else if (id === 'yesterday') { const y = dateStrFromOffset(-1); from.value = y; to.value = y; }
+    else if (id === '7d') { from.value = dateStrFromOffset(-6); to.value = today; }
+    else if (id === 'month') { from.value = monthStartStr(); to.value = today; }
+    else { from.value = ''; to.value = ''; }
+
+    renderList();
+  }
+
+  function onCustomDateChange() {
+    document.querySelectorAll('#preset-row .chip').forEach(c => c.classList.remove('active'));
+    renderList();
+  }
+
+  function getFiltered() {
+    const from = document.getElementById('filter-from').value;
+    const to = document.getElementById('filter-to').value;
+    const type = document.getElementById('filter-type').value;
+
+    return activities.filter(a =>
+      (!from || a.date >= from) &&
+      (!to || a.date <= to) &&
+      (!type || a.type === type)
+    );
+  }
+
+  function renderList() {
+    const filtered = getFiltered().sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+
+    document.getElementById('list-count').textContent =
+      `HISTORY · ${filtered.length} ${filtered.length === 1 ? 'ENTRY' : 'ENTRIES'}`;
+
+    const list = document.getElementById('activity-list');
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty"><span>👶</span>No activities found</div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(a => {
+      const t = typeInfo(a.type);
+      return `
+      <div class="activity-item">
+        <div class="activity-left">
+          <div class="activity-type" style="color:var(--${t.id})">${t.emoji} ${t.label}</div>
+          ${a.note ? `<div class="activity-note">${escapeHtml(a.note)}</div>` : ''}
+          <div class="activity-date">${formatDate(a.date)} at ${formatTime12(a.time)}</div>
+        </div>
+        <div class="activity-right">
+          <button class="edit-btn" onclick="openEditModal('${a.id}')" aria-label="Edit entry" title="Edit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg>
+          </button>
+          <button class="del-btn" onclick="deleteActivity('${a.id}')" aria-label="Delete entry" title="Delete">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+    }).join('');
+  }
+
+  // --- Edit modal ------------------------------------------------------------
+  function openEditModal(id) {
+    const a = activities.find(x => x.id === id);
+    if (!a) return;
+    editingId = id;
+    setEditType(a.type);
+    document.getElementById('edit-date').value = a.date;
+    document.getElementById('edit-time').value = a.time;
+    document.getElementById('edit-note').value = a.note || '';
+    document.getElementById('edit-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    editingId = null;
+  }
+
+  function handleModalOverlayClick(e) {
+    if (e.target === document.getElementById('edit-modal')) closeEditModal();
+  }
+
+  async function updateActivity() {
+    const date = document.getElementById('edit-date').value;
+    const time = document.getElementById('edit-time').value;
+    const note = document.getElementById('edit-note').value.trim();
+
+    if (!editSelectedType) return showToast('Please choose an activity', 'err');
+    if (!date || !time) return showToast('Please set date and time', 'err');
+
+    const btn = document.getElementById('edit-save-btn');
+    btn.disabled = true;
+
+    try {
+      await db.collection('baby_activities').doc(editingId).update({ type: editSelectedType, date, time, note });
+      closeEditModal();
+      showToast('Entry updated!');
+    } catch (err) {
+      console.error('Update failed:', err);
+      showToast('Failed to update entry', 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // --- Excel export (respects the current filter) ----------------------------
+  function exportExcel() {
+    const rows = getFiltered().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    if (!rows.length) return showToast('No activities to export', 'err');
+
+    const data = [
+      ['Date', 'Time', 'Activity', 'Note'],
+      ...rows.map(a => [a.date, formatTime12(a.time), typeInfo(a.type).label, a.note || ''])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Activities');
+    XLSX.writeFile(wb, `baby_activities_${todayStr()}.xlsx`);
+    showToast('Excel file downloaded!');
+  }
+
+  function showTab(tab) {
+    document.getElementById('tab-add').style.display = tab === 'add' ? 'block' : 'none';
+    document.getElementById('tab-list').style.display = tab === 'list' ? 'block' : 'none';
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (tab === 'add' && i === 0) || (tab === 'list' && i === 1));
+    });
+    if (tab === 'list') { renderGlance(); renderList(); }
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = type === 'err' ? '#E24B4A' : '#1D9E75';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  init();
+</script>
+</body>
+</html>
