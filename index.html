@@ -609,6 +609,7 @@
   let selectedType = null;
   let editSelectedType = null;
   let editingId = null;
+  let dateTimeTouched = false;
 
   function typeInfo(id) { return TYPES.find(t => t.id === id); }
 
@@ -716,9 +717,18 @@
 
     buildPresetRow();
 
-    const { date, time } = getNow();
-    document.getElementById('act-date').value = date;
-    document.getElementById('act-time').value = time;
+    setNowFields();
+    document.getElementById('act-date').addEventListener('input', () => { dateTimeTouched = true; });
+    document.getElementById('act-time').addEventListener('input', () => { dateTimeTouched = true; });
+
+    // A home-screen PWA can sit resident for hours without reloading, so the
+    // prefilled "now" and the glance grid's "time ago" values go stale unless
+    // refreshed on resume and periodically while open.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refreshLiveState();
+    });
+    window.addEventListener('focus', refreshLiveState);
+    setInterval(refreshLiveState, 30000);
 
     db.collection('baby_activities').onSnapshot(snapshot => {
       activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -730,6 +740,18 @@
       console.error('Firestore error:', err);
       showToast('Could not load activities', 'err');
     });
+  }
+
+  function setNowFields() {
+    const { date, time } = getNow();
+    document.getElementById('act-date').value = date;
+    document.getElementById('act-time').value = time;
+    dateTimeTouched = false;
+  }
+
+  function refreshLiveState() {
+    if (!dateTimeTouched) setNowFields();
+    renderGlance();
   }
 
   async function saveActivity() {
@@ -747,9 +769,7 @@
       await db.collection('baby_activities').add({ type: selectedType, date, time, note });
 
       document.getElementById('act-note').value = '';
-      const n = getNow();
-      document.getElementById('act-date').value = n.date;
-      document.getElementById('act-time').value = n.time;
+      setNowFields();
 
       showToast(`${typeInfo(selectedType).label} logged!`);
     } catch (err) {
