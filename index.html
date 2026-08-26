@@ -227,7 +227,6 @@
       gap: 10px;
       margin-bottom: 1rem;
     }
-    .glance-grid .metric:last-child { grid-column: 1 / -1; }
 
     .metric {
       background: var(--bg);
@@ -793,7 +792,7 @@
   // --- Glance (per-type "last logged") --------------------------------------
   function renderGlance() {
     const grid = document.getElementById('glance-grid');
-    grid.innerHTML = TYPES.map(t => {
+    grid.innerHTML = TYPES.filter(t => t.id !== 'milk_start').map(t => {
       const last = activities
         .filter(a => a.type === t.id)
         .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
