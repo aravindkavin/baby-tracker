@@ -511,6 +511,11 @@
       <div class="field">
         <label>Note <span style="font-weight:400;color:var(--text-tertiary)">(optional)</span></label>
         <input type="text" id="act-note" placeholder="e.g. 90ml, left side, fussy">
+        <select id="act-note-select" style="display:none">
+          <option value="Left">Left</option>
+          <option value="Right">Right</option>
+          <option value="Bottle">Bottle</option>
+        </select>
       </div>
       <button class="btn-primary" id="add-btn" onclick="saveActivity()">
         <i class="ti ti-plus" aria-hidden="true"></i> Log Activity
@@ -587,6 +592,11 @@
     <div class="field">
       <label>Note <span style="font-weight:400;color:var(--text-tertiary)">(optional)</span></label>
       <input type="text" id="edit-note" placeholder="e.g. 90ml, left side, fussy">
+      <select id="edit-note-select" style="display:none">
+        <option value="Left">Left</option>
+        <option value="Right">Right</option>
+        <option value="Bottle">Bottle</option>
+      </select>
     </div>
     <button class="btn-primary" id="edit-save-btn" onclick="updateActivity()">
       <i class="ti ti-check" aria-hidden="true"></i> Save Changes
@@ -749,11 +759,19 @@
     `).join('');
   }
 
+  function isMilkType(id) { return id === 'milk_start' || id === 'milk_end'; }
+
+  function setNoteFieldMode(inputId, selectId, isMilk) {
+    document.getElementById(inputId).style.display = isMilk ? 'none' : '';
+    document.getElementById(selectId).style.display = isMilk ? '' : 'none';
+  }
+
   function setType(id) {
     selectedType = id;
     document.querySelectorAll('#type-grid .type-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.type === id);
     });
+    setNoteFieldMode('act-note', 'act-note-select', isMilkType(id));
   }
 
   function setEditType(id) {
@@ -761,6 +779,7 @@
     document.querySelectorAll('#edit-type-grid .type-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.type === id);
     });
+    setNoteFieldMode('edit-note', 'edit-note-select', isMilkType(id));
   }
 
   function init() {
@@ -817,7 +836,9 @@
   async function saveActivity() {
     const date = document.getElementById('act-date').value;
     const time = document.getElementById('act-time').value;
-    const note = document.getElementById('act-note').value.trim();
+    const note = isMilkType(selectedType)
+      ? document.getElementById('act-note-select').value
+      : document.getElementById('act-note').value.trim();
 
     if (!selectedType) return showToast('Please choose an activity', 'err');
     if (!date || !time) return showToast('Please set date and time', 'err');
@@ -829,6 +850,7 @@
       await db.collection('baby_activities').add({ type: selectedType, date, time, note });
 
       document.getElementById('act-note').value = '';
+      document.getElementById('act-note-select').value = 'Left';
       setNowFields();
 
       showToast(`${typeInfo(selectedType).label} logged!`);
@@ -982,6 +1004,7 @@
     document.getElementById('edit-date').value = a.date;
     document.getElementById('edit-time').value = a.time;
     document.getElementById('edit-note').value = a.note || '';
+    document.getElementById('edit-note-select').value = isMilkType(a.type) ? (a.note || 'Left') : 'Left';
     document.getElementById('edit-modal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }
@@ -999,7 +1022,9 @@
   async function updateActivity() {
     const date = document.getElementById('edit-date').value;
     const time = document.getElementById('edit-time').value;
-    const note = document.getElementById('edit-note').value.trim();
+    const note = isMilkType(editSelectedType)
+      ? document.getElementById('edit-note-select').value
+      : document.getElementById('edit-note').value.trim();
 
     if (!editSelectedType) return showToast('Please choose an activity', 'err');
     if (!date || !time) return showToast('Please set date and time', 'err');
