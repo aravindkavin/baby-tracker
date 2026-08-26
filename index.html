@@ -429,6 +429,16 @@
       white-space: nowrap;
     }
     .toast.show { opacity: 1; }
+    .toast.big {
+      font-size: 22px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 16px 28px;
+      white-space: normal;
+      text-align: center;
+      max-width: 90vw;
+    }
 
     .modal-overlay {
       position: fixed;
@@ -853,7 +863,11 @@
       document.getElementById('act-note-select').value = 'Left';
       setNowFields();
 
-      showToast(`${typeInfo(selectedType).label} logged!`);
+      if (selectedType === 'milk_end') {
+        showToast("Don't forget to burp!", 'big');
+      } else {
+        showToast(`${typeInfo(selectedType).label} logged!`);
+      }
     } catch (err) {
       console.error('Save failed:', err);
       showToast('Failed to save activity', 'err');
@@ -1074,8 +1088,9 @@
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.background = type === 'err' ? '#E24B4A' : '#1D9E75';
+    t.classList.toggle('big', type === 'big');
     t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
+    setTimeout(() => t.classList.remove('show'), type === 'big' ? 4000 : 2500);
   }
 
   init();
