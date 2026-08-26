@@ -259,6 +259,29 @@
       padding: 0.9rem 1rem;
       margin-bottom: 1rem;
     }
+    .filter-card.hidden { display: none; }
+
+    .filter-toggle-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 0.75rem;
+    }
+
+    .filter-toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--bg);
+      border: 0.5px solid var(--border-md);
+      border-radius: 999px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+    .filter-toggle-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .filter-toggle-btn:active { opacity: 0.8; }
 
     .chip-row {
       display: flex;
@@ -500,7 +523,13 @@
     <p class="section-title">At a glance</p>
     <div class="glance-grid" id="glance-grid"></div>
 
-    <div class="filter-card">
+    <div class="filter-toggle-row">
+      <button type="button" class="filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFilterCard()">
+        <i class="ti ti-filter" aria-hidden="true"></i> Filter
+      </button>
+    </div>
+
+    <div class="filter-card hidden" id="filter-card">
       <div class="chip-row" id="preset-row"></div>
       <div class="filter-row">
         <div class="field">
@@ -882,6 +911,16 @@
     renderList();
   }
 
+  function toggleFilterCard() {
+    document.getElementById('filter-card').classList.toggle('hidden');
+  }
+
+  function isFilterActive() {
+    return document.getElementById('filter-from').value ||
+      document.getElementById('filter-to').value ||
+      document.getElementById('filter-type').value;
+  }
+
   function getFiltered() {
     const from = document.getElementById('filter-from').value;
     const to = document.getElementById('filter-to').value;
@@ -895,6 +934,8 @@
   }
 
   function renderList() {
+    document.getElementById('filter-toggle-btn').classList.toggle('active', !!isFilterActive());
+
     const filtered = getFiltered().sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
 
     document.getElementById('list-count').textContent =
