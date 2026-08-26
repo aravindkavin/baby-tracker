@@ -664,6 +664,38 @@
     return formatDate(date);
   }
 
+  function formatDuration(mins) {
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  // Pairs each Milk End with the nearest preceding Milk Start and returns
+  // { [milk_end id]: durationMinutes }.
+  function computeFeedDurations() {
+    const starts = activities
+      .filter(a => a.type === 'milk_start')
+      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const ends = activities.filter(a => a.type === 'milk_end');
+
+    const durations = {};
+    ends.forEach(e => {
+      const eKey = e.date + e.time;
+      let nearest = null;
+      for (const s of starts) {
+        if ((s.date + s.time) <= eKey) nearest = s;
+        else break;
+      }
+      if (!nearest) return;
+      const start = new Date(`${nearest.date}T${nearest.time}:00`);
+      const end = new Date(`${e.date}T${e.time}:00`);
+      const mins = Math.round((end - start) / 60000);
+      if (mins >= 0) durations[e.id] = mins;
+    });
+    return durations;
+  }
+
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
@@ -792,7 +824,7 @@
   // --- Glance (per-type "last logged") --------------------------------------
   function renderGlance() {
     const grid = document.getElementById('glance-grid');
-    grid.innerHTML = TYPES.filter(t => t.id !== 'milk_start').map(t => {
+    const typeCards = TYPES.filter(t => t.id !== 'milk_start').map(t => {
       const last = activities
         .filter(a => a.type === t.id)
         .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
@@ -803,7 +835,19 @@
           <div class="metric-sub">${last ? `${formatDate(last.date)}, ${formatTime12(last.time)}` : 'No entries yet'}</div>
         </div>
       `;
-    }).join('');
+    });
+
+    const durations = Object.values(computeFeedDurations());
+    const avgMins = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+    const avgCard = `
+      <div class="metric">
+        <div class="metric-label">⏱️ Avg Feed</div>
+        <div class="metric-value" style="color:${avgMins !== null ? 'var(--milk_end)' : 'var(--text)'}">${avgMins !== null ? formatDuration(avgMins) : '—'}</div>
+        <div class="metric-sub">${durations.length ? `Over ${durations.length} feed${durations.length === 1 ? '' : 's'}` : 'No entries yet'}</div>
+      </div>
+    `;
+
+    grid.innerHTML = typeCards.join('') + avgCard;
   }
 
   // --- Custom date filter ----------------------------------------------------
@@ -862,13 +906,17 @@
       return;
     }
 
+    const feedDurations = computeFeedDurations();
+
     list.innerHTML = filtered.map(a => {
       const t = typeInfo(a.type);
+      const feedMins = t.id === 'milk_end' ? feedDurations[a.id] : undefined;
       return `
       <div class="activity-item">
         <div class="activity-left">
           <div class="activity-type" style="color:var(--${t.id})">${t.emoji} ${t.label}</div>
           ${a.note ? `<div class="activity-note">${escapeHtml(a.note)}</div>` : ''}
+          ${feedMins !== undefined ? `<div class="activity-note" style="color:var(--milk_end)">⏱️ ${formatDuration(feedMins)} feed</div>` : ''}
           <div class="activity-date">${formatDate(a.date)} at ${formatTime12(a.time)}</div>
         </div>
         <div class="activity-right">
