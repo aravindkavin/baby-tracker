@@ -1226,7 +1226,7 @@
   function showToast(msg, type) {
     const t = document.getElementById('toast');
     t.textContent = msg;
-    t.style.background = type === 'err' ? '#E24B4A' : '#1D9E75';
+    t.style.background = (type === 'err' || type === 'big') ? '#E24B4A' : '#1D9E75';
     t.classList.toggle('big', type === 'big');
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), type === 'big' ? 4000 : 2500);
