@@ -32,6 +32,7 @@
       --burp: #8B5CF6;        --burp-soft: rgba(139,92,246,0.12);
       --urine: #D9A404;       --urine-soft: rgba(217,164,4,0.14);
       --pumped_milk: #EC4899; --pumped_milk-soft: rgba(236,72,153,0.12);
+      --night-band: rgba(226,75,74,0.10);
     }
 
     @media (prefers-color-scheme: dark) {
@@ -51,6 +52,7 @@
         --burp: #A78BFA;        --burp-soft: rgba(167,139,250,0.18);
         --urine: #E8BC3A;       --urine-soft: rgba(232,188,58,0.18);
         --pumped_milk: #F472B6; --pumped_milk-soft: rgba(244,114,182,0.18);
+        --night-band: rgba(226,75,74,0.18);
       }
     }
 
@@ -266,6 +268,7 @@
     .filter-toggle-row {
       display: flex;
       justify-content: flex-end;
+      gap: 8px;
       margin-bottom: 0.75rem;
     }
 
@@ -404,6 +407,36 @@
     }
     .edit-btn:hover { color: var(--green); background: rgba(29,158,117,0.08); }
     .del-btn:hover { color: var(--red); background: rgba(226,75,74,0.08); }
+
+    .chart-legend {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .chart-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .chart-legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .chart-wrap { width: 100%; overflow-x: auto; }
+    #chart-svg { width: 100%; height: auto; min-width: 560px; display: block; }
+    #chart-svg text { fill: var(--text-secondary); font-size: 9px; }
+    #chart-svg .chart-row-label { fill: var(--text); font-size: 11px; font-weight: 600; }
+    #chart-svg .chart-gridline { stroke: var(--border); stroke-width: 1; }
+    #chart-svg .chart-axis-line { stroke: var(--border-md); stroke-width: 1; }
 
     .empty {
       text-align: center;
@@ -557,9 +590,23 @@
     <div class="glance-grid" id="glance-grid"></div>
 
     <div class="filter-toggle-row">
+      <button type="button" class="filter-toggle-btn" id="analysis-toggle-btn" onclick="toggleAnalysisCard()">
+        <i class="ti ti-chart-dots" aria-hidden="true"></i> Analysis
+      </button>
       <button type="button" class="filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFilterCard()">
         <i class="ti ti-filter" aria-hidden="true"></i> Filter
       </button>
+    </div>
+
+    <div class="filter-card hidden" id="analysis-card">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="chart-date" onchange="renderChart()">
+      </div>
+      <div class="chart-legend" id="chart-legend"></div>
+      <div class="chart-wrap">
+        <svg id="chart-svg" viewBox="0 0 800 200" preserveAspectRatio="xMinYMid meet"></svg>
+      </div>
     </div>
 
     <div class="filter-card hidden" id="filter-card">
@@ -733,6 +780,25 @@
     return `${h12}:${pad(m)} ${ampm}`;
   }
 
+  function formatTimeShort(t) {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'p' : 'a';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${pad(m)}${ampm}`;
+  }
+
+  function hourLabel(h) {
+    const hh = h % 24;
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h12 = hh % 12 === 0 ? 12 : hh % 12;
+    return `${h12} ${ampm}`;
+  }
+
+  function isNightTime(t) {
+    const h = parseInt(t.split(':')[0], 10);
+    return h >= 0 && h < 6;
+  }
+
   function timeAgo(date, time) {
     const then = new Date(`${date}T${time}:00`);
     let diffMs = Date.now() - then.getTime();
@@ -872,6 +938,7 @@
     });
 
     buildPresetRow();
+    document.getElementById('chart-date').value = todayStr();
 
     setNowFields();
     document.getElementById('act-date').addEventListener('input', () => { dateTimeTouched = true; });
@@ -891,6 +958,7 @@
       renderGlance();
       if (document.getElementById('tab-list').style.display !== 'none') {
         renderList();
+        if (!document.getElementById('analysis-card').classList.contains('hidden')) renderChart();
       }
     }, err => {
       console.error('Firestore error:', err);
@@ -1053,6 +1121,13 @@
     document.getElementById('filter-card').classList.toggle('hidden');
   }
 
+  function toggleAnalysisCard() {
+    const card = document.getElementById('analysis-card');
+    const nowHidden = card.classList.toggle('hidden');
+    document.getElementById('analysis-toggle-btn').classList.toggle('active', !nowHidden);
+    if (!nowHidden) renderChart();
+  }
+
   function isFilterActive() {
     return document.getElementById('filter-from').value ||
       document.getElementById('filter-to').value ||
@@ -1114,6 +1189,75 @@
       </div>
     `;
     }).join('');
+  }
+
+  // --- Daily feed-time chart --------------------------------------------------
+  function renderChart() {
+    const dateVal = document.getElementById('chart-date').value || todayStr();
+    const feedDurations = computeFeedDurations();
+    const feeds = activities
+      .filter(a => a.date === dateVal && a.type === 'milk_end' && feedDurations[a.id] !== undefined)
+      .map(a => ({ time: a.time, mins: feedDurations[a.id] }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+    document.getElementById('chart-legend').innerHTML = `
+      <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--milk_end)"></span>🥛 Feed Time (min)</span>
+      <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--red)"></span>🌙 Night Feed (12 AM–6 AM)</span>
+    `;
+
+    const left = 40, right = 784, top = 16, bottom = 172;
+    const width = right - left;
+    const height = bottom - top;
+
+    let parts = '';
+
+    const nightX = left + (6 / 24) * width;
+    parts += `<rect x="${left}" y="${top}" width="${nightX - left}" height="${height}" fill="var(--night-band)"/>`;
+
+    for (let h = 0; h <= 24; h += 2) {
+      const x = left + (h / 24) * width;
+      parts += `<line class="chart-gridline" x1="${x}" y1="${top}" x2="${x}" y2="${bottom}"/>`;
+      parts += `<text x="${x}" y="${bottom + 14}" text-anchor="middle">${hourLabel(h)}</text>`;
+    }
+    parts += `<line class="chart-axis-line" x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}"/>`;
+    parts += `<line class="chart-axis-line" x1="${left}" y1="${top}" x2="${left}" y2="${bottom}"/>`;
+
+    if (!feeds.length) {
+      parts += `<text x="${(left + right) / 2}" y="${(top + bottom) / 2}" text-anchor="middle" style="font-size:13px">No feeds for this day</text>`;
+    } else {
+      const maxMins = Math.max(...feeds.map(f => f.mins));
+      const yMax = Math.max(10, Math.ceil((maxMins * 1.2) / 10) * 10);
+      const yFor = mins => bottom - (mins / yMax) * height;
+
+      const ySteps = 4;
+      for (let i = 0; i <= ySteps; i++) {
+        const val = Math.round((yMax / ySteps) * i);
+        const y = yFor(val);
+        parts += `<line class="chart-gridline" x1="${left}" y1="${y}" x2="${right}" y2="${y}"/>`;
+        parts += `<text x="${left - 6}" y="${y + 3}" text-anchor="end">${val}</text>`;
+      }
+
+      const points = feeds.map(f => {
+        const [h, m] = f.time.split(':').map(Number);
+        const x = left + ((h + m / 60) / 24) * width;
+        const y = yFor(f.mins);
+        const color = isNightTime(f.time) ? 'var(--red)' : 'var(--milk_end)';
+        return { x, y, f, color };
+      });
+
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1], cur = points[i];
+        parts += `<path d="M${prev.x},${prev.y} L${cur.x},${cur.y}" fill="none" stroke="${prev.color}" stroke-width="2"/>`;
+      }
+
+      points.forEach(p => {
+        parts += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${p.color}"/>`;
+        parts += `<text x="${p.x}" y="${p.y - 10}" text-anchor="middle" style="fill:${p.color};font-weight:600">${p.f.mins}m</text>`;
+        parts += `<text x="${p.x}" y="${bottom + 26}" text-anchor="middle">${formatTimeShort(p.f.time)}</text>`;
+      });
+    }
+
+    document.getElementById('chart-svg').innerHTML = parts;
   }
 
   // --- Edit modal ------------------------------------------------------------
@@ -1220,7 +1364,11 @@
     document.querySelectorAll('.tab').forEach((t, i) => {
       t.classList.toggle('active', (tab === 'add' && i === 0) || (tab === 'list' && i === 1));
     });
-    if (tab === 'list') { renderGlance(); renderList(); }
+    if (tab === 'list') {
+      renderGlance();
+      renderList();
+      if (!document.getElementById('analysis-card').classList.contains('hidden')) renderChart();
+    }
   }
 
   function showToast(msg, type) {
