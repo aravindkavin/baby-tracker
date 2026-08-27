@@ -350,6 +350,29 @@
 
     .activity-list { display: flex; flex-direction: column; gap: 8px; }
 
+    .date-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+      padding: 4px 2px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .date-group-header:first-child { margin-top: 0; }
+    .date-group-header i { font-size: 16px; }
+
+    .date-group-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     .activity-item {
       background: var(--bg);
       border: 0.5px solid var(--border);
@@ -635,7 +658,6 @@
       <i class="ti ti-download" aria-hidden="true"></i> Export as Excel
     </button>
 
-    <p class="section-title" id="list-count">HISTORY</p>
     <div class="activity-list" id="activity-list"></div>
   </div>
 </div>
@@ -740,6 +762,7 @@
   let editSelectedType = null;
   let editingId = null;
   let dateTimeTouched = false;
+  const collapsedDates = new Set();
 
   function typeInfo(id) { return TYPES.find(t => t.id === id); }
 
@@ -1151,9 +1174,6 @@
 
     const filtered = getFiltered().sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
 
-    document.getElementById('list-count').textContent =
-      `HISTORY · ${filtered.length} ${filtered.length === 1 ? 'ENTRY' : 'ENTRIES'}`;
-
     const list = document.getElementById('activity-list');
     if (!filtered.length) {
       list.innerHTML = `<div class="empty"><span>👶</span>No activities found</div>`;
@@ -1162,33 +1182,62 @@
 
     const feedDurations = computeFeedDurations();
 
-    list.innerHTML = filtered.map(a => {
-      const t = typeInfo(a.type);
-      const feedMins = t.id === 'milk_end' ? feedDurations[a.id] : undefined;
-      const noteText = t.id === 'pumped_milk'
-        ? `${a.amount != null ? a.amount : '?'}ml pumped (${a.note || '?'})`
-        : a.amountUsed != null
-          ? `${a.note} · ${a.amountUsed}ml used`
-          : a.note;
-      return `
-      <div class="activity-item">
-        <div class="activity-left">
-          <div class="activity-type" style="color:var(--${t.id})">${t.emoji} ${t.label}</div>
-          ${noteText ? `<div class="activity-note">${escapeHtml(noteText)}</div>` : ''}
-          ${feedMins !== undefined ? `<div class="activity-note" style="color:var(--milk_end)">⏱️ ${formatDuration(feedMins)} feed</div>` : ''}
-          <div class="activity-date">${formatDate(a.date)} at ${formatTime12(a.time)}</div>
+    const groups = new Map();
+    filtered.forEach(a => {
+      if (!groups.has(a.date)) groups.set(a.date, []);
+      groups.get(a.date).push(a);
+    });
+
+    list.innerHTML = Array.from(groups.entries()).map(([date, items]) => {
+      const isCollapsed = collapsedDates.has(date);
+      const header = `
+        <div class="date-group-header" onclick="toggleDateGroup('${date}')">
+          <span>${dateGroupLabel(date)} · ${items.length} ${items.length === 1 ? 'entry' : 'entries'}</span>
+          <i class="ti ti-chevron-${isCollapsed ? 'down' : 'up'}" aria-hidden="true"></i>
         </div>
-        <div class="activity-right">
-          <button class="edit-btn" onclick="openEditModal('${a.id}')" aria-label="Edit entry" title="Edit">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg>
-          </button>
-          <button class="del-btn" onclick="deleteActivity('${a.id}')" aria-label="Delete entry" title="Delete">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
-          </button>
+      `;
+      if (isCollapsed) return header;
+      const rows = items.map(a => {
+        const t = typeInfo(a.type);
+        const feedMins = t.id === 'milk_end' ? feedDurations[a.id] : undefined;
+        const noteText = t.id === 'pumped_milk'
+          ? `${a.amount != null ? a.amount : '?'}ml pumped (${a.note || '?'})`
+          : a.amountUsed != null
+            ? `${a.note} · ${a.amountUsed}ml used`
+            : a.note;
+        return `
+        <div class="activity-item">
+          <div class="activity-left">
+            <div class="activity-type" style="color:var(--${t.id})">${t.emoji} ${t.label}</div>
+            ${noteText ? `<div class="activity-note">${escapeHtml(noteText)}</div>` : ''}
+            ${feedMins !== undefined ? `<div class="activity-note" style="color:var(--milk_end)">⏱️ ${formatDuration(feedMins)} feed</div>` : ''}
+            <div class="activity-date">${formatTime12(a.time)}</div>
+          </div>
+          <div class="activity-right">
+            <button class="edit-btn" onclick="openEditModal('${a.id}')" aria-label="Edit entry" title="Edit">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg>
+            </button>
+            <button class="del-btn" onclick="deleteActivity('${a.id}')" aria-label="Delete entry" title="Delete">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
+            </button>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+      }).join('');
+      return header + `<div class="date-group-items">${rows}</div>`;
     }).join('');
+  }
+
+  function toggleDateGroup(date) {
+    if (collapsedDates.has(date)) collapsedDates.delete(date);
+    else collapsedDates.add(date);
+    renderList();
+  }
+
+  function dateGroupLabel(date) {
+    if (date === todayStr()) return 'Today';
+    if (date === dateStrFromOffset(-1)) return 'Yesterday';
+    return formatDate(date);
   }
 
   // --- Daily feed-time chart --------------------------------------------------
