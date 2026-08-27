@@ -31,6 +31,7 @@
       --milk_end: #0EA5A5;    --milk_end-soft: rgba(14,165,165,0.12);
       --burp: #8B5CF6;        --burp-soft: rgba(139,92,246,0.12);
       --urine: #D9A404;       --urine-soft: rgba(217,164,4,0.14);
+      --pumped_milk: #EC4899; --pumped_milk-soft: rgba(236,72,153,0.12);
     }
 
     @media (prefers-color-scheme: dark) {
@@ -49,6 +50,7 @@
         --milk_end: #2DD4D4;    --milk_end-soft: rgba(45,212,212,0.18);
         --burp: #A78BFA;        --burp-soft: rgba(167,139,250,0.18);
         --urine: #E8BC3A;       --urine-soft: rgba(232,188,58,0.18);
+        --pumped_milk: #F472B6; --pumped_milk-soft: rgba(244,114,182,0.18);
       }
     }
 
@@ -521,11 +523,27 @@
       <div class="field">
         <label>Note <span style="font-weight:400;color:var(--text-tertiary)">(optional)</span></label>
         <input type="text" id="act-note" placeholder="e.g. 90ml, left side, fussy">
-        <select id="act-note-select" style="display:none">
+        <select id="act-note-select" style="display:none" onchange="updateUsedAmountVisibility('act', selectedType)">
           <option value="Left">Left</option>
           <option value="Right">Right</option>
           <option value="Bottle">Bottle</option>
+          <option value="Pumped Milk">Pumped Milk</option>
         </select>
+      </div>
+      <div class="field" id="act-pump-side-field" style="display:none">
+        <label>Side</label>
+        <select id="act-pump-side">
+          <option value="Left">Left</option>
+          <option value="Right">Right</option>
+        </select>
+      </div>
+      <div class="field" id="act-pump-amount-field" style="display:none">
+        <label>Amount Pumped (ml)</label>
+        <input type="number" id="act-pump-amount" placeholder="e.g. 120" min="0" step="1" inputmode="numeric">
+      </div>
+      <div class="field" id="act-used-amount-field" style="display:none">
+        <label>Amount Used (ml)</label>
+        <input type="number" id="act-used-amount" placeholder="e.g. 90" min="0" step="1" inputmode="numeric">
       </div>
       <button class="btn-primary" id="add-btn" onclick="saveActivity()">
         <i class="ti ti-plus" aria-hidden="true"></i> Log Activity
@@ -602,11 +620,27 @@
     <div class="field">
       <label>Note <span style="font-weight:400;color:var(--text-tertiary)">(optional)</span></label>
       <input type="text" id="edit-note" placeholder="e.g. 90ml, left side, fussy">
-      <select id="edit-note-select" style="display:none">
+      <select id="edit-note-select" style="display:none" onchange="updateUsedAmountVisibility('edit', editSelectedType)">
         <option value="Left">Left</option>
         <option value="Right">Right</option>
         <option value="Bottle">Bottle</option>
+        <option value="Pumped Milk">Pumped Milk</option>
       </select>
+    </div>
+    <div class="field" id="edit-pump-side-field" style="display:none">
+      <label>Side</label>
+      <select id="edit-pump-side">
+        <option value="Left">Left</option>
+        <option value="Right">Right</option>
+      </select>
+    </div>
+    <div class="field" id="edit-pump-amount-field" style="display:none">
+      <label>Amount Pumped (ml)</label>
+      <input type="number" id="edit-pump-amount" placeholder="e.g. 120" min="0" step="1" inputmode="numeric">
+    </div>
+    <div class="field" id="edit-used-amount-field" style="display:none">
+      <label>Amount Used (ml)</label>
+      <input type="number" id="edit-used-amount" placeholder="e.g. 90" min="0" step="1" inputmode="numeric">
     </div>
     <button class="btn-primary" id="edit-save-btn" onclick="updateActivity()">
       <i class="ti ti-check" aria-hidden="true"></i> Save Changes
@@ -642,6 +676,7 @@
     { id: 'poop',       label: 'Poop',       emoji: '💩' },
     { id: 'milk_start', label: 'Milk Start', emoji: '🍼' },
     { id: 'milk_end',   label: 'Milk End',   emoji: '🥛' },
+    { id: 'pumped_milk', label: 'Pumped Milk', emoji: '🧴' },
     { id: 'burp',       label: 'Burping',    emoji: '😮‍💨' },
     { id: 'urine',      label: 'Urine',      emoji: '💧' }
   ];
@@ -770,10 +805,27 @@
   }
 
   function isMilkType(id) { return id === 'milk_start' || id === 'milk_end'; }
+  function isPumpType(id) { return id === 'pumped_milk'; }
 
-  function setNoteFieldMode(inputId, selectId, isMilk) {
-    document.getElementById(inputId).style.display = isMilk ? 'none' : '';
-    document.getElementById(selectId).style.display = isMilk ? '' : 'none';
+  function fieldModeFor(id) {
+    if (isPumpType(id)) return 'pump';
+    if (isMilkType(id)) return 'select';
+    return 'text';
+  }
+
+  function setNoteFieldMode(prefix, mode) {
+    document.getElementById(`${prefix}-note`).style.display = mode === 'text' ? '' : 'none';
+    document.getElementById(`${prefix}-note-select`).style.display = mode === 'select' ? '' : 'none';
+    document.getElementById(`${prefix}-pump-side-field`).style.display = mode === 'pump' ? '' : 'none';
+    document.getElementById(`${prefix}-pump-amount-field`).style.display = mode === 'pump' ? '' : 'none';
+  }
+
+  // The "amount used" field only applies when finishing a feed (Milk End)
+  // sourced from the pumped-milk stock.
+  function updateUsedAmountVisibility(prefix, type) {
+    const select = document.getElementById(`${prefix}-note-select`);
+    const show = type === 'milk_end' && select.value === 'Pumped Milk';
+    document.getElementById(`${prefix}-used-amount-field`).style.display = show ? '' : 'none';
   }
 
   function setType(id) {
@@ -781,7 +833,8 @@
     document.querySelectorAll('#type-grid .type-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.type === id);
     });
-    setNoteFieldMode('act-note', 'act-note-select', isMilkType(id));
+    setNoteFieldMode('act', fieldModeFor(id));
+    updateUsedAmountVisibility('act', id);
   }
 
   function setEditType(id) {
@@ -789,7 +842,21 @@
     document.querySelectorAll('#edit-type-grid .type-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.type === id);
     });
-    setNoteFieldMode('edit-note', 'edit-note-select', isMilkType(id));
+    setNoteFieldMode('edit', fieldModeFor(id));
+    updateUsedAmountVisibility('edit', id);
+  }
+
+  // Pumped-milk stock = total ml pumped minus total ml used from Milk End
+  // entries sourced from the stock. Exclude one activity id (used while
+  // editing that entry) so it doesn't double-count against itself.
+  function pumpedInventoryExcluding(excludeId) {
+    const pumped = activities
+      .filter(a => a.type === 'pumped_milk')
+      .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+    const used = activities
+      .filter(a => a.type === 'milk_end' && a.note === 'Pumped Milk' && a.id !== excludeId)
+      .reduce((sum, a) => sum + (Number(a.amountUsed) || 0), 0);
+    return pumped - used;
   }
 
   function init() {
@@ -846,24 +913,47 @@
   async function saveActivity() {
     const date = document.getElementById('act-date').value;
     const time = document.getElementById('act-time').value;
-    const note = isMilkType(selectedType)
-      ? document.getElementById('act-note-select').value
-      : document.getElementById('act-note').value.trim();
+    const note = isPumpType(selectedType)
+      ? document.getElementById('act-pump-side').value
+      : isMilkType(selectedType)
+        ? document.getElementById('act-note-select').value
+        : document.getElementById('act-note').value.trim();
 
     if (!selectedType) return showToast('Please choose an activity', 'err');
     if (!date || !time) return showToast('Please set date and time', 'err');
+
+    const doc = { type: selectedType, date, time, note };
+
+    if (isPumpType(selectedType)) {
+      const amount = parseFloat(document.getElementById('act-pump-amount').value);
+      if (!(amount > 0)) return showToast('Please enter how much was pumped', 'err');
+      doc.amount = amount;
+    }
+
+    if (selectedType === 'milk_end' && note === 'Pumped Milk') {
+      const amountUsed = parseFloat(document.getElementById('act-used-amount').value);
+      if (!(amountUsed > 0)) return showToast('Please enter how much was used', 'err');
+      const available = pumpedInventoryExcluding(null);
+      if (amountUsed > available) return showToast(`Only ${available}ml of pumped milk in stock`, 'err');
+      doc.amountUsed = amountUsed;
+    }
 
     const btn = document.getElementById('add-btn');
     btn.disabled = true;
 
     try {
-      await db.collection('baby_activities').add({ type: selectedType, date, time, note });
+      await db.collection('baby_activities').add(doc);
 
       document.getElementById('act-note').value = '';
       document.getElementById('act-note-select').value = 'Left';
+      document.getElementById('act-pump-side').value = 'Left';
+      document.getElementById('act-pump-amount').value = '';
+      document.getElementById('act-used-amount').value = '';
       setNowFields();
 
-      if (selectedType === 'milk_end') {
+      if (isPumpType(selectedType)) {
+        showToast(`${doc.amount}ml pumped milk logged!`);
+      } else if (selectedType === 'milk_end') {
         showToast("Don't forget to burp!", 'big');
       } else {
         showToast(`${typeInfo(selectedType).label} logged!`);
@@ -889,7 +979,7 @@
   // --- Glance (per-type "last logged") --------------------------------------
   function renderGlance() {
     const grid = document.getElementById('glance-grid');
-    const typeCards = TYPES.filter(t => t.id !== 'milk_start').map(t => {
+    const typeCards = TYPES.filter(t => t.id !== 'milk_start' && t.id !== 'pumped_milk').map(t => {
       const last = activities
         .filter(a => a.type === t.id)
         .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
@@ -912,7 +1002,19 @@
       </div>
     `;
 
-    grid.innerHTML = typeCards.join('') + avgCard;
+    const inventory = pumpedInventoryExcluding(null);
+    const lastPump = activities
+      .filter(a => a.type === 'pumped_milk')
+      .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+    const stockCard = `
+      <div class="metric">
+        <div class="metric-label">🧴 Milk Stock</div>
+        <div class="metric-value" style="color:${inventory > 0 ? 'var(--pumped_milk)' : 'var(--text)'}">${inventory}ml</div>
+        <div class="metric-sub">${lastPump ? `Last pumped ${timeAgo(lastPump.date, lastPump.time)}` : 'No pumps yet'}</div>
+      </div>
+    `;
+
+    grid.innerHTML = typeCards.join('') + stockCard + avgCard;
   }
 
   // --- Custom date filter ----------------------------------------------------
@@ -988,11 +1090,16 @@
     list.innerHTML = filtered.map(a => {
       const t = typeInfo(a.type);
       const feedMins = t.id === 'milk_end' ? feedDurations[a.id] : undefined;
+      const noteText = t.id === 'pumped_milk'
+        ? `${a.amount != null ? a.amount : '?'}ml pumped (${a.note || '?'})`
+        : a.amountUsed != null
+          ? `${a.note} · ${a.amountUsed}ml used`
+          : a.note;
       return `
       <div class="activity-item">
         <div class="activity-left">
           <div class="activity-type" style="color:var(--${t.id})">${t.emoji} ${t.label}</div>
-          ${a.note ? `<div class="activity-note">${escapeHtml(a.note)}</div>` : ''}
+          ${noteText ? `<div class="activity-note">${escapeHtml(noteText)}</div>` : ''}
           ${feedMins !== undefined ? `<div class="activity-note" style="color:var(--milk_end)">⏱️ ${formatDuration(feedMins)} feed</div>` : ''}
           <div class="activity-date">${formatDate(a.date)} at ${formatTime12(a.time)}</div>
         </div>
@@ -1019,6 +1126,10 @@
     document.getElementById('edit-time').value = a.time;
     document.getElementById('edit-note').value = a.note || '';
     document.getElementById('edit-note-select').value = isMilkType(a.type) ? (a.note || 'Left') : 'Left';
+    document.getElementById('edit-pump-side').value = isPumpType(a.type) ? (a.note || 'Left') : 'Left';
+    document.getElementById('edit-pump-amount').value = a.amount != null ? a.amount : '';
+    document.getElementById('edit-used-amount').value = a.amountUsed != null ? a.amountUsed : '';
+    updateUsedAmountVisibility('edit', a.type);
     document.getElementById('edit-modal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }
@@ -1036,18 +1147,37 @@
   async function updateActivity() {
     const date = document.getElementById('edit-date').value;
     const time = document.getElementById('edit-time').value;
-    const note = isMilkType(editSelectedType)
-      ? document.getElementById('edit-note-select').value
-      : document.getElementById('edit-note').value.trim();
+    const note = isPumpType(editSelectedType)
+      ? document.getElementById('edit-pump-side').value
+      : isMilkType(editSelectedType)
+        ? document.getElementById('edit-note-select').value
+        : document.getElementById('edit-note').value.trim();
 
     if (!editSelectedType) return showToast('Please choose an activity', 'err');
     if (!date || !time) return showToast('Please set date and time', 'err');
+
+    const FieldValue = firebase.firestore.FieldValue;
+    const doc = { type: editSelectedType, date, time, note, amount: FieldValue.delete(), amountUsed: FieldValue.delete() };
+
+    if (isPumpType(editSelectedType)) {
+      const amount = parseFloat(document.getElementById('edit-pump-amount').value);
+      if (!(amount > 0)) return showToast('Please enter how much was pumped', 'err');
+      doc.amount = amount;
+    }
+
+    if (editSelectedType === 'milk_end' && note === 'Pumped Milk') {
+      const amountUsed = parseFloat(document.getElementById('edit-used-amount').value);
+      if (!(amountUsed > 0)) return showToast('Please enter how much was used', 'err');
+      const available = pumpedInventoryExcluding(editingId);
+      if (amountUsed > available) return showToast(`Only ${available}ml of pumped milk in stock`, 'err');
+      doc.amountUsed = amountUsed;
+    }
 
     const btn = document.getElementById('edit-save-btn');
     btn.disabled = true;
 
     try {
-      await db.collection('baby_activities').doc(editingId).update({ type: editSelectedType, date, time, note });
+      await db.collection('baby_activities').doc(editingId).update(doc);
       closeEditModal();
       showToast('Entry updated!');
     } catch (err) {
@@ -1065,7 +1195,16 @@
 
     const data = [
       ['Date', 'Time', 'Activity', 'Note'],
-      ...rows.map(a => [a.date, formatTime12(a.time), typeInfo(a.type).label, a.note || ''])
+      ...rows.map(a => [
+        a.date,
+        formatTime12(a.time),
+        typeInfo(a.type).label,
+        a.type === 'pumped_milk'
+          ? `${a.amount != null ? a.amount : ''}ml pumped (${a.note || ''})`
+          : a.amountUsed != null
+            ? `${a.note} · ${a.amountUsed}ml used`
+            : (a.note || '')
+      ])
     ];
     const ws = XLSX.utils.aoa_to_sheet(data);
     ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 30 }];
